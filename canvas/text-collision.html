@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Text Collision|Canvas</title>
+    <link rel="stylesheet" href="../css/base.css" class="css" />
+    <style>
+      .container {
+        text-align: center;
+        padding-top: 40px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <span class="title">Canvas | Text Collision - 文字碰撞解决</span>
+    </header>
+    <div class="container">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div class="pane">
+      <a href="javascript:void(0);">
+        <label for="collisionCheckbox">启用碰撞检测：</label>
+        <input
+          type="checkbox"
+          id="collisionCheckbox"
+          onchange="switchCollision(event)"
+        />
+      </a>
+      <a href="javascript:void(0);" onclick="drawPoints()">绘制点位</a>
+      <a href="javascript:void(0);" onclick="drawPoints(true)"
+        >绘制点位和名称</a
+      >
+      <a href="javascript:void(0);" onclick="clearCanvas()">清空</a>
+    </div>
+    <script src="https://cdn.bootcss.com/Faker/3.1.0/faker.min.js"></script>
+    <script>
+      var width = document.body.clientWidth - 200,
+        height = document.body.clientHeight - 120;
+      var texts = [];
+      // 是否是高分屏
+      var isRetina =
+          (window.devicePixelRatio ||
+            window.screen.deviceXDPI / window.screen.logicalXDPI) > 1,
+        scale = isRetina ? 2 : 1;
+
+      var collision = false;
+      var _textBounds = [];
+
+      initCanvas();
+
+      var points = generate(5000);
+
+      function initCanvas() {
+        this.canvas = document.getElementById("canvas");
+        this.ctx = canvas.getContext("2d");
+        canvas.style.width = width + "px";
+        canvas.style.height = height + "px";
+
+        canvas.setAttribute("width", width * scale);
+        canvas.setAttribute("height", height * scale);
+
+        if (scale > 1) {
+          ctx.scale(scale, scale);
+        }
+
+        clearCanvas();
+      }
+
+      function switchCollision(e) {
+        collision = e.target.checked;
+
+        drawPoints(true);
+      }
+
+      function drawPoints(drawName) {
+        clearCanvas();
+        points.forEach(function(p) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 2, 0, Math.PI * 2, false);
+          ctx.fillStyle = "#33d9b2";
+          ctx.fill("evenodd");
+          ctx.restore();
+        });
+
+        if (drawName) drawText();
+      }
+
+      function drawText() {
+        points.forEach(function(p) {
+          ctx.save();
+          // 如果需要检测碰撞
+          if (collision) {
+            // 偏移量，即便两个文字没有碰撞、也稍微多留一点空隙，效果会更好
+            var offsetX = 10,
+              offsetY = 10;
+            // 首先计算文字所需的宽度
+            var measure = ctx.measureText(p.name);
+            // 求出文字在 canvas 画板中占据的最大 y 坐标
+            var maxX = measure.width + p.x + offsetX;
+            // 求出文字在 canvas 画板中占据的最大 y 坐标
+            // canvas 只能计算文字的宽度，并不能计算出文字的高度。所以就利用文字的宽度除以文字个数计算个大概
+            var maxY = measure.width / p.name.length + p.y + offsetY;
+
+            var min = { x: p.x, y: p.y };
+            var max = { x: maxX, y: maxY };
+            // bounds 为该文字在 canvas 中所占据的范围
+            var bounds = new Bounds(min, max);
+            for (var index in _textBounds) {
+              // 循环所有已绘制的文字范围，检测是否和当前文字范围有交集，如果有交集说明会碰撞，则跳过该文字
+              var pointBounds = _textBounds[index];
+              if (pointBounds.intersects(bounds)) {
+                return;
+              }
+            }
+            // 如果没有与已绘制文字碰撞，则将该文字的范围添加到数组中，并进行绘制操作
+            _textBounds.push(bounds);
+          }
+
+          ctx.fillStyle = "red";
+          ctx.textBaseline = "hanging";
+          ctx.textAlign = "center";
+          ctx.fillText(p.name, p.x, p.y);
+          ctx.restore();
+        });
+      }
+
+      function clearCanvas() {
+        _textBounds = [];
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "#f7f1e3";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      function generate(num) {
+        var list = [];
+        for (var i = 0; i < num; i++) {
+          var x = 0 + Math.random() * width;
+          var y = 0 + Math.random() * height;
+          var item = { x, y, name: faker.name.findName() };
+          list.push(item);
+        }
+        return list;
+      }
+
+      /**
+       * 定义范围对象
+       */
+      function Bounds(min, max) {
+        this.min = min;
+        this.max = max;
+      }
+
+      /**
+       * 判断范围是否与另外一个范围有交集
+       */
+      Bounds.prototype.intersects = function(bounds) {
+        var min = this.min,
+          max = this.max,
+          min2 = bounds.min,
+          max2 = bounds.max,
+          xIntersects = max2.x >= min.x && min2.x <= max.x,
+          yIntersects = max2.y >= min.y && min2.y <= max.y;
+
+        return xIntersects && yIntersects;
+      };
+    </script>
+  </body>
+</html>
